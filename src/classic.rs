@@ -1,11 +1,9 @@
 use image::{Rgba, RgbaImage};
 use hsl::HSL;
-use {hsl_to_rgba, fill_rect};
+use {hsl_to_rgba, fill_rect, rgba};
 
 fn white() -> Rgba<u8> {
-	Rgba::<u8> {
-		data: [255, 255, 255, 1],
-	}
+	rgba(255, 255, 255, 255)
 }
 
 pub struct Options {
@@ -22,12 +20,18 @@ pub struct Classic {
 
 impl Classic {
 	fn seedrand(&mut self, seed: &[u8]) {
-		self.randseed = 0.0;
+		let mut randseed = 0u64;
 
 		for i in 0..seed.len() / 2 {
-			let h = seed[i * 2] | seed[i * 2 + 1];
-			self.randseed = (self.randseed as u8 ^ h) as f64;
+			let h = ((seed[i * 2] as u64) << 8) | seed[i * 2 + 1] as u64;
+			randseed = randseed ^ h;
 		}
+
+		if seed.len() % 2 == 1 {
+			randseed = randseed ^ ((seed[seed.len() - 1] as u64) << 8);
+		}
+
+		self.randseed = randseed as f64;
 	}
 
 	fn rand(&mut self) -> f64 {
@@ -47,6 +51,7 @@ impl Classic {
 	}
 
 	fn create_image_data(&mut self, size: u32) -> Vec<bool> {
+		let odd = size % 2 == 1;
 		let data_width = size / 2;
 	
 		(0..size)
@@ -56,7 +61,12 @@ impl Classic {
 					.into_iter()
 					.map(|_| self.rand() >= 0.5)
 					.collect::<Vec<bool>>();
-				row.clone().into_iter().chain(row.into_iter().rev()).collect::<Vec<_>>()
+				let mut cloned_row = row.clone();
+				if odd {
+					let last = cloned_row.last().cloned().unwrap_or(false);
+					cloned_row.push(last);
+				}
+				cloned_row.into_iter().chain(row.into_iter().rev()).collect::<Vec<_>>()
 			})
 			.flat_map(|x| x)
 			.collect()
@@ -74,6 +84,7 @@ impl Classic {
 		let background_color = options.background_color.unwrap_or_else(|| white());
 
 		let image_data = builder.create_image_data(options.size);
+		println!("image_data: {:?}", image_data);
 		let real_size = options.size * scale;
 
 		let mut image = RgbaImage::new(real_size, real_size);

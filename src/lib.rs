@@ -12,7 +12,7 @@ use hsl::HSL;
 fn hsl_to_rgba(hsl: HSL) -> Rgba<u8> {
 	let (r, g, b) = hsl.to_rgb();
 	Rgba::<u8> {
-		data: [r, g, b, 1],
+		data: [r, g, b, 255],
 	}
 }
 
@@ -20,6 +20,12 @@ fn fill_rect(image: &mut RgbaImage, x: u32, y: u32, size: u32, color: Rgba<u8>) 
 	let mut sub_image = image.sub_image(x, y, size, size);
 	for (_, _ , pixel) in sub_image.pixels_mut() {
 		*pixel = color;
+	}
+}
+
+pub fn rgba(r: u8, g: u8, b: u8, a: u8) -> Rgba<u8> {
+	Rgba::<u8> {
+		data: [r, g, b, a],
 	}
 }
 

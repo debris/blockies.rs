@@ -15,7 +15,7 @@ pub struct Ethereum {
 	randseed: [u32; 4],
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 enum FillType {
 	None,
 	Color,
@@ -32,13 +32,13 @@ impl Ethereum {
 	}
 
 	fn rand(&mut self) -> f64 {
-		let t = self.randseed[0] ^ (self.randseed[0] << 11);
+		let t = (self.randseed[0] ^ (self.randseed[0] << 11)) as i32;
 		self.randseed[0] = self.randseed[1];
 		self.randseed[1] = self.randseed[2];
 		self.randseed[2] = self.randseed[3];
-		self.randseed[3] = self.randseed[3] ^ (self.randseed[3] >> 19) ^ t ^ (t >> 8);
-
-		(self.randseed[3] >> 0 / (1 << 31)) as f64
+		self.randseed[3] = self.randseed[3] ^ (self.randseed[3] >> 19) ^ (t ^ (t >> 8)) as u32;
+		
+		((self.randseed[3] as i32).abs() as u32) as f64 / ((1u32 << 31) as f64)
 	}
 
 	fn create_color(&mut self) -> Rgba<u8> {
@@ -51,6 +51,7 @@ impl Ethereum {
 	}
 
 	fn create_image_data(&mut self, size: u32) -> Vec<FillType> {
+		let odd = size % 2 == 1;
 		let data_width = size / 2;
 	
 		(0..size)
@@ -66,7 +67,15 @@ impl Ethereum {
 						}
 					})
 					.collect::<Vec<_>>();
-				row.clone().into_iter().chain(row.into_iter().rev()).collect::<Vec<_>>()
+				let mut cloned_row = row.clone();
+				if odd {
+					let last = cloned_row.last().cloned().unwrap_or(FillType::None);
+					cloned_row.push(last);
+				}
+
+				let res = cloned_row.into_iter().chain(row.into_iter().rev()).collect::<Vec<_>>();
+				println!("res: {:?}", res);
+				res
 			})
 			.flat_map(|x| x)
 			.collect()
@@ -78,6 +87,9 @@ impl Ethereum {
 		};
 
 		builder.seedrand(&options.seed);
+		
+		println!("Seed: {:?}", builder.randseed);
+
 		let scale = options.scale;
 		let color = options.color.unwrap_or_else(|| builder.create_color());
 		let background_color = options.background_color.unwrap_or_else(|| builder.create_color());
