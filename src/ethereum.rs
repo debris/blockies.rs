@@ -73,9 +73,7 @@ impl Ethereum {
 					cloned_row.push(last);
 				}
 
-				let res = cloned_row.into_iter().chain(row.into_iter().rev()).collect::<Vec<_>>();
-				println!("res: {:?}", res);
-				res
+				cloned_row.into_iter().chain(row.into_iter().rev()).collect::<Vec<_>>()
 			})
 			.flat_map(|x| x)
 			.collect()
@@ -88,8 +86,6 @@ impl Ethereum {
 
 		builder.seedrand(&options.seed);
 		
-		println!("Seed: {:?}", builder.randseed);
-
 		let scale = options.scale;
 		let color = options.color.unwrap_or_else(|| builder.create_color());
 		let background_color = options.background_color.unwrap_or_else(|| builder.create_color());

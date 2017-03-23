@@ -84,7 +84,6 @@ impl Classic {
 		let background_color = options.background_color.unwrap_or_else(|| white());
 
 		let image_data = builder.create_image_data(options.size);
-		println!("image_data: {:?}", image_data);
 		let real_size = options.size * scale;
 
 		let mut image = RgbaImage::new(real_size, real_size);
