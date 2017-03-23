@@ -1,4 +1,10 @@
 # blockies.rs
+
+[![Build Status][travis-image]][travis-url]
+
+[travis-image]: https://travis-ci.org/debris/blockies.rs.svg?branch=master
+[travis-url]: https://travis-ci.org/debris/blockies.rs
+
 library that generates blocky identicons
 
 Rust implementation of javascript [blockies](https://github.com/download13/blockies) library. Supports also [ethereum blockies](https://github.com/alexvandesande/blockies)
