@@ -1,0 +1,27 @@
+name: blockies
+version: "0.1.0"
+author: debris <marek.kotewicz@gmail.com>
+about: blockies cli
+args:
+    - mode:
+        long: mode
+        help: Choose blockies image type
+        takes_value: true
+    - size:
+        long: size
+        help: Blockies image size
+        takes_value: true
+    - scale:
+        long: scale
+        help: Blockies pixel size
+        takes_value: true
+    - seed:
+        long: seed
+        help: Seed phrase for generating new image
+        takes_value: true
+        required: true
+    - output:
+        long: output
+        help: Output file path
+        takes_value: true
+

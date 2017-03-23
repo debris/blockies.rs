@@ -6,3 +6,12 @@ authors = ["debris <marek.kotewicz@gmail.com>"]
 [dependencies]
 hsl = "0.1"
 image = { version = "0.12", default-features = false, features = ["png_codec"] }
+clap = { version = "2", features = ["yaml"], optional = true }
+
+[features]
+cli = ["clap"]
+
+[[bin]]
+name = "blockies"
+path = "src/bin/main.rs"
+doc = false
