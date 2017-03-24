@@ -2,6 +2,10 @@
 name = "blockies"
 version = "0.1.0"
 authors = ["debris <marek.kotewicz@gmail.com>"]
+homepage = "https://github.com/debris/blockies.rs"
+license = "MIT"
+keywords = ["blockies", "identity", "identicon", "png", "blocky"]
+description = "Library that generates blocky identicons."
 
 [dependencies]
 hsl = "0.1"
