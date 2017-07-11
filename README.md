@@ -14,7 +14,7 @@ Rust implementation of javascript [blockies](https://github.com/download13/block
 build with
 
 ```
-cargo build --release --features "cli"
+cargo build --release -p blockies-cli
 ```
 
 ```

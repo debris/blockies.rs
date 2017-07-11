@@ -12,7 +12,7 @@ pub struct Options {
 }
 
 pub struct Ethereum {
-	randseed: [u32; 4],
+	randseed: [i32; 4],
 }
 
 #[derive(Debug, Clone)]
@@ -24,21 +24,22 @@ enum FillType {
 
 impl Ethereum {
 	fn seedrand(&mut self, seed: &[u8]) {
-		self.randseed = [0u32; 4];
+		self.randseed = [0i32; 4];
 
 		for i in 0..seed.len() {
-			self.randseed[i % 4] = ((self.randseed[i % 4] << 5) - self.randseed[i % 4]) + seed[i] as u32;
+			let (tmp, _) = (self.randseed[i % 4] << 5).overflowing_sub(self.randseed[i % 4]);
+			self.randseed[i % 4] = tmp + seed[i] as i32;
 		}
 	}
 
 	fn rand(&mut self) -> f64 {
-		let t = (self.randseed[0] ^ (self.randseed[0] << 11)) as i32;
+		let t = self.randseed[0] ^ (self.randseed[0] << 11);
 		self.randseed[0] = self.randseed[1];
 		self.randseed[1] = self.randseed[2];
 		self.randseed[2] = self.randseed[3];
-		self.randseed[3] = self.randseed[3] ^ (self.randseed[3] >> 19) ^ (t ^ (t >> 8)) as u32;
-		
-		((self.randseed[3] as i32).abs() as u32) as f64 / ((1u32 << 31) as f64)
+		self.randseed[3] = self.randseed[3] ^ (self.randseed[3] >> 19) ^ (t ^ (t >> 8));
+
+		((self.randseed[3].abs() as f64) / ((1i32 << 31) as f64)).abs()
 	}
 
 	fn create_color(&mut self) -> Rgba<u8> {
@@ -53,7 +54,7 @@ impl Ethereum {
 	fn create_image_data(&mut self, size: u32) -> Vec<FillType> {
 		let odd = size % 2 == 1;
 		let data_width = size / 2;
-	
+
 		(0..size)
 			.into_iter()
 			.map(|_| {
@@ -81,11 +82,11 @@ impl Ethereum {
 
 	pub fn create_icon(options: Options) -> RgbaImage {
 		let mut builder = Ethereum {
-			randseed: [0u32; 4],
+			randseed: [0i32; 4],
 		};
 
 		builder.seedrand(&options.seed);
-		
+
 		let scale = options.scale;
 		let color = options.color.unwrap_or_else(|| builder.create_color());
 		let background_color = options.background_color.unwrap_or_else(|| builder.create_color());

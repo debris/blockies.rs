@@ -1,6 +1,6 @@
 [package]
 name = "blockies"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["debris <marek.kotewicz@gmail.com>"]
 homepage = "https://github.com/debris/blockies.rs"
 license = "MIT"
@@ -9,13 +9,7 @@ description = "Library that generates blocky identicons."
 
 [dependencies]
 hsl = "0.1"
-image = { version = "0.12", default-features = false, features = ["png_codec"] }
-clap = { version = "2", features = ["yaml"], optional = true }
+image = { version = "=0.12.3", default-features = false, features = ["png_codec"] }
 
-[features]
-cli = ["clap"]
-
-[[bin]]
-name = "blockies"
-path = "src/bin/main.rs"
-doc = false
+[workspace]
+members = ["cli"]

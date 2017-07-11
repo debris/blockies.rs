@@ -1,0 +1,13 @@
+[package]
+name = "blockies-cli"
+version = "0.1.0"
+authors = ["debris <marek.kotewicz@gmail.com>"]
+
+[dependencies]
+blockies = { path = "../" }
+clap = { version = "2", features = ["yaml"] }
+
+[[bin]]
+name = "blockies"
+path = "src/main.rs"
+doc = false
