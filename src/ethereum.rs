@@ -1,34 +1,50 @@
-use image::{Rgba, RgbaImage};
 use hsl::HSL;
-use {hsl_to_rgba, fill_rect};
+use crate::{Rgb, Icon};
+use crate::util::{create_image_data, rasterize, hsl_to_rgb};
 
-pub struct Options {
-	pub size: u32,
-	pub scale: u32,
-	pub seed: Vec<u8>,
-	pub color: Option<Rgba<u8>>,
-	pub background_color: Option<Rgba<u8>>,
-	pub spot_color: Option<Rgba<u8>>,
+pub struct Options<Seed: AsRef<[u8]>> {
+	pub size: usize,
+	pub scale: usize,
+	pub seed: Seed,
+	pub color: Option<Rgb>,
+	pub background_color: Option<Rgb>,
+	pub spot_color: Option<Rgb>,
 }
 
 pub struct Ethereum {
 	randseed: [i32; 4],
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 enum FillType {
-	None,
-	Color,
-	SpotColor,
+	Color = 0,
+	Background = 1,
+	SpotColor = 2,
+}
+
+impl Default for FillType {
+	fn default() -> Self {
+		FillType::Background
+	}
+}
+
+impl From<FillType> for u8 {
+	fn from(fill: FillType) -> u8 {
+		fill as u8
+	}
 }
 
 impl Ethereum {
-	fn seedrand(&mut self, seed: &[u8]) {
-		self.randseed = [0i32; 4];
+	fn new(seed: &[u8]) -> Self {
+		let mut randseed = [0i32; 4];
 
-		for i in 0..seed.len() {
-			let (tmp, _) = (self.randseed[i % 4] << 5).overflowing_sub(self.randseed[i % 4]);
-			self.randseed[i % 4] = tmp + seed[i] as i32;
+		for (i, byte) in seed.iter().enumerate() {
+			let (tmp, _) = (randseed[i % 4] << 5).overflowing_sub(randseed[i % 4]);
+			randseed[i % 4] = tmp + *byte as i32;
+		}
+
+		Ethereum {
+			randseed
 		}
 	}
 
@@ -42,72 +58,53 @@ impl Ethereum {
 		((self.randseed[3].abs() as f64) / ((1i32 << 31) as f64)).abs()
 	}
 
-	fn create_color(&mut self) -> Rgba<u8> {
+	fn create_color(&mut self) -> Rgb {
 		let hsl = HSL {
 			h: (self.rand() * 360.0).floor(),
 			s: (self.rand() * 60.0 + 40.0) / 100.0,
 			l: (self.rand() + self.rand() + self.rand() + self.rand()) * 25.0 / 100.0,
 		};
-		hsl_to_rgba(hsl)
+		hsl_to_rgb(hsl)
 	}
 
-	fn create_image_data(&mut self, size: u32) -> Vec<FillType> {
-		let odd = size % 2 == 1;
-		let data_width = size / 2;
-
-		(0..size)
-			.into_iter()
-			.map(|_| {
-				let row = (0..data_width)
-					.into_iter()
-					.map(|_| {
-						match (self.rand() * 2.3).floor() {
-							0.0 => FillType::None,
-							1.0 => FillType::Color,
-							_ => FillType::SpotColor,
-						}
-					})
-					.collect::<Vec<_>>();
-				let mut cloned_row = row.clone();
-				if odd {
-					let last = cloned_row.last().cloned().unwrap_or(FillType::None);
-					cloned_row.push(last);
-				}
-
-				cloned_row.into_iter().chain(row.into_iter().rev()).collect::<Vec<_>>()
-			})
-			.flat_map(|x| x)
-			.collect()
+	fn create_fill(&mut self) -> FillType {
+		match (self.rand() * 2.3) as u32 {
+			0 => FillType::Background,
+			1 => FillType::Color,
+			_ => FillType::SpotColor,
+		}
 	}
 
-	pub fn create_icon(options: Options) -> RgbaImage {
-		let mut builder = Ethereum {
-			randseed: [0i32; 4],
-		};
+	pub(crate) fn create_icon<Seed>(options: Options<Seed>) -> Icon
+	where
+		Seed: AsRef<[u8]>,
+	{
+		let mut builder = Ethereum::new(options.seed.as_ref());
 
-		builder.seedrand(&options.seed);
+		let mut palette = Vec::with_capacity(9);
+
+		palette.extend_from_slice(&options.color.unwrap_or_else(|| builder.create_color()));
+		palette.extend_from_slice(&options.background_color.unwrap_or_else(|| builder.create_color()));
+		palette.extend_from_slice(&options.spot_color.unwrap_or_else(|| builder.create_color()));
+
+		let image_data = create_image_data(options.size, || builder.create_fill());
 
 		let scale = options.scale;
-		let color = options.color.unwrap_or_else(|| builder.create_color());
-		let background_color = options.background_color.unwrap_or_else(|| builder.create_color());
-		let spot_color = options.spot_color.unwrap_or_else(|| builder.create_color());
-		let image_data = builder.create_image_data(options.size);
-		let real_size = options.size * scale;
-		let mut image = RgbaImage::new(real_size, real_size);
-		fill_rect(&mut image, 0, 0, real_size, background_color);
+		let size = options.size;
+		let row_width = size + size % 2;
 
-		for (index, fill) in image_data.into_iter().enumerate() {
-			let index = index as u32;
-			let row = index / options.size;
-			let col = index % options.size;
+		let width = row_width * scale;
+		let height = size * scale;
 
-			match fill {
-				FillType::None => (),
-				FillType::Color => fill_rect(&mut image, col * scale, row * scale, scale, color),
-				FillType::SpotColor => fill_rect(&mut image, col * scale, row * scale, scale, spot_color),
-			}
+		let data = rasterize(&image_data, row_width, size, scale, 2);
+		let depth = png::BitDepth::Two;
+
+		Icon {
+			width,
+			height,
+			depth,
+			palette,
+			data,
 		}
-
-		image
 	}
 }

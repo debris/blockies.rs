@@ -1,45 +1,45 @@
-extern crate image;
-extern crate hsl;
+use std::io;
+pub use png::EncodingError;
 
 pub mod classic;
 pub mod ethereum;
+pub(crate) mod util;
 
-use std::io;
-pub use image::ImageError;
-use image::{Rgba, RgbaImage, GenericImage, DynamicImage, ImageFormat};
-use hsl::HSL;
+pub type Rgb = [u8; 3];
 
-fn hsl_to_rgba(hsl: HSL) -> Rgba<u8> {
-	let (r, g, b) = hsl.to_rgb();
-	Rgba::<u8> {
-		data: [r, g, b, 255],
-	}
+pub enum Blockies<Seed: AsRef<[u8]>> {
+	Classic(classic::Options<Seed>),
+	Ethereum(ethereum::Options<Seed>),
 }
 
-fn fill_rect(image: &mut RgbaImage, x: u32, y: u32, size: u32, color: Rgba<u8>) {
-	let mut sub_image = image.sub_image(x, y, size, size);
-	for (_, _ , pixel) in sub_image.pixels_mut() {
-		*pixel = color;
-	}
+struct Icon {
+	width: usize,
+	height: usize,
+	depth: png::BitDepth,
+	palette: Vec<u8>,
+	data: Vec<u8>,
 }
 
-pub fn rgba(r: u8, g: u8, b: u8, a: u8) -> Rgba<u8> {
-	Rgba::<u8> {
-		data: [r, g, b, a],
-	}
-}
+pub fn create_icon<W, Seed>(w: &mut W, blockies: Blockies<Seed>) -> Result<(), EncodingError>
+where
+	W: io::Write,
+	Seed: AsRef<[u8]>,
+{
+	use png::HasParameters;
 
-pub enum Blockies {
-	Classic(classic::Options),
-	Ethereum(ethereum::Options),
-}
-
-pub fn create_icon<W>(w: &mut W, blockies: Blockies) -> Result<(), ImageError> where W: io::Write {
-	let image = match blockies {
+	let icon = match blockies {
 		Blockies::Classic(options) => classic::Classic::create_icon(options),
 		Blockies::Ethereum(options) => ethereum::Ethereum::create_icon(options),
 	};
 
-	let dy_image = DynamicImage::ImageRgba8(image);
-	dy_image.save(w, ImageFormat::PNG)
+	let mut encoder = png::Encoder::new(w, icon.width as u32, icon.height as u32);
+
+	encoder
+		.set(png::ColorType::Indexed)
+		.set(icon.depth);
+
+	let mut writer = encoder.write_header()?;
+
+	writer.write_chunk(png::chunk::PLTE, &icon.palette)?;
+	writer.write_image_data(&icon.data)
 }
