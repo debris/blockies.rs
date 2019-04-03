@@ -12,8 +12,5 @@ edition = "2018"
 hsl = "0.1"
 png = "0.14"
 
-[dev-dependencies]
-image = { version = "=0.21.0", default-features = false, features = ["png_codec"] }
-
 [workspace]
 members = ["cli"]
