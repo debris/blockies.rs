@@ -9,8 +9,8 @@ description = "Library that generates blocky identicons."
 edition = "2018"
 
 [dependencies]
-hsl = "0.1"
-png = "0.14"
+hsl = "0.1.1"
+pixelate = "0.1"
 
 [workspace]
 members = ["cli"]

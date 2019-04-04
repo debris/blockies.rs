@@ -1,24 +1,32 @@
+use std::io;
 use hsl::HSL;
-use crate::{Rgb, Icon};
-use crate::util::{create_image_data, rasterize, hsl_to_rgb};
+use pixelate::{Color, Image, Error};
 
-const fn white() -> Rgb {
-	[255, 255, 255]
-}
-
-pub struct Options<Seed: AsRef<[u8]>> {
-	pub size: usize,
-	pub scale: usize,
-	pub seed: Seed,
-	pub color: Option<Rgb>,
-	pub background_color: Option<Rgb>,
-}
+use crate::util::{create_image_data, hsl_to_rgb};
 
 pub struct Classic {
+	pub size: usize,
+	pub scale: usize,
+	pub color: Option<Color>,
+	pub background_color: Option<Color>,
+}
+
+impl Default for Classic {
+	fn default() -> Self {
+		Classic {
+			size: 8,
+			scale: 16,
+			color: None,
+			background_color: None,
+		}
+	}
+}
+
+pub struct Seed {
 	randseed: f64,
 }
 
-impl Classic {
+impl Seed {
 	fn new(seed: &[u8]) -> Self {
 		let mut randseed = 0u64;
 
@@ -31,7 +39,7 @@ impl Classic {
 			randseed = randseed ^ ((seed[seed.len() - 1] as u64) << 8);
 		}
 
-		Classic {
+		Seed {
 			randseed: randseed as f64,
 		}
 	}
@@ -43,7 +51,7 @@ impl Classic {
 		r - r.floor()
 	}
 
-	fn create_color(&mut self) -> Rgb {
+	fn create_color(&mut self) -> Color {
 		let hsl = HSL {
 			h: (self.rand() * 360.0).floor(),
 			s: (self.rand() * 50.0 + 50.0) / 100.0,
@@ -51,39 +59,23 @@ impl Classic {
 		};
 		hsl_to_rgb(hsl)
 	}
+}
 
-	pub(crate) fn create_icon<Seed>(options: Options<Seed>) -> Icon
-	where
-		Seed: AsRef<[u8]>,
-	{
-		let mut builder = Classic::new(options.seed.as_ref());
+impl Classic {
+	pub fn create_icon<W: io::Write>(&self, writer: W, seed: &[u8]) -> Result<(), Error> {
+		let mut seed = Seed::new(seed);
 
-		let scale = options.scale;
-		let color = options.color.unwrap_or_else(|| builder.create_color());
-		let background_color = options.background_color.unwrap_or_else(|| white());
+		let color = self.color.unwrap_or_else(|| seed.create_color());
+		let background_color = self.background_color.unwrap_or_else(|| pixelate::WHITE);
 
-		let mut palette = Vec::with_capacity(6);
+		let palette = vec![background_color, color];
+		let pixels = create_image_data(self.size as usize, || seed.rand() >= 0.5);
 
-		palette.extend_from_slice(&background_color);
-		palette.extend_from_slice(&color);
-
-		let image_data = create_image_data(options.size as usize, || builder.rand() >= 0.5);
-
-		let size = options.size;
-		let row_width = size + size % 2;
-
-		let width = row_width * scale;
-		let height = size * scale;
-
-		let data = rasterize(&image_data, row_width, size, scale, 1);
-		let depth = png::BitDepth::One;
-
-		Icon {
-			width,
-			height,
-			depth,
-			palette,
-			data,
-		}
+		Image {
+			palette: &palette,
+			pixels: &pixels,
+			width: self.size + self.size % 2,
+			scale: self.scale,
+		}.render(writer)
 	}
 }

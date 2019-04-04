@@ -1,19 +1,15 @@
-use blockies::{Blockies, create_icon, classic};
+use blockies::Classic;
 
 #[test]
 fn test_classic() {
 	let expected = include_bytes!("./classic_hello_world_10_5.png");
 
 	let mut memory = Vec::new();
-	let options = classic::Options {
-		size: 10,
-		scale: 5,
-		seed: "hello world",
-		color: None,
-		background_color: None,
-	};
+	let mut blockies = Classic::default();
 
-	create_icon(&mut memory, Blockies::Classic(options)).unwrap();
+	blockies.size = 10;
+	blockies.scale = 5;
+	blockies.create_icon(&mut memory, b"hello world").unwrap();
 
 	assert_eq!(&expected[..], &memory[..]);
 }

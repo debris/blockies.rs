@@ -1,17 +1,30 @@
+use std::io;
 use hsl::HSL;
-use crate::{Rgb, Icon};
-use crate::util::{create_image_data, rasterize, hsl_to_rgb};
+use pixelate::{Color, Image, Error};
 
-pub struct Options<Seed: AsRef<[u8]>> {
-	pub size: usize,
-	pub scale: usize,
-	pub seed: Seed,
-	pub color: Option<Rgb>,
-	pub background_color: Option<Rgb>,
-	pub spot_color: Option<Rgb>,
-}
+use crate::util::{create_image_data, hsl_to_rgb};
 
 pub struct Ethereum {
+	pub size: usize,
+	pub scale: usize,
+	pub color: Option<Color>,
+	pub background_color: Option<Color>,
+	pub spot_color: Option<Color>,
+}
+
+impl Default for Ethereum {
+	fn default() -> Self {
+		Ethereum {
+			size: 8,
+			scale: 16,
+			color: None,
+			background_color: None,
+			spot_color: None
+		}
+	}
+}
+
+pub struct Seed {
 	randseed: [i32; 4],
 }
 
@@ -22,19 +35,13 @@ enum FillType {
 	SpotColor = 2,
 }
 
-impl Default for FillType {
-	fn default() -> Self {
-		FillType::Background
-	}
-}
-
 impl From<FillType> for u8 {
 	fn from(fill: FillType) -> u8 {
 		fill as u8
 	}
 }
 
-impl Ethereum {
+impl Seed {
 	fn new(seed: &[u8]) -> Self {
 		let mut randseed = [0i32; 4];
 
@@ -43,7 +50,7 @@ impl Ethereum {
 			randseed[i % 4] = tmp + *byte as i32;
 		}
 
-		Ethereum {
+		Seed {
 			randseed
 		}
 	}
@@ -58,7 +65,7 @@ impl Ethereum {
 		((self.randseed[3].abs() as f64) / ((1i32 << 31) as f64)).abs()
 	}
 
-	fn create_color(&mut self) -> Rgb {
+	fn create_color(&mut self) -> Color {
 		let hsl = HSL {
 			h: (self.rand() * 360.0).floor(),
 			s: (self.rand() * 60.0 + 40.0) / 100.0,
@@ -74,37 +81,25 @@ impl Ethereum {
 			_ => FillType::SpotColor,
 		}
 	}
+}
 
-	pub(crate) fn create_icon<Seed>(options: Options<Seed>) -> Icon
-	where
-		Seed: AsRef<[u8]>,
-	{
-		let mut builder = Ethereum::new(options.seed.as_ref());
+impl Ethereum {
+	pub fn create_icon<W: io::Write>(&self, writer: W, seed: &[u8]) -> Result<(), Error> {
+		let mut seed = Seed::new(seed);
 
-		let mut palette = Vec::with_capacity(9);
+		let palette = vec![
+			self.color.unwrap_or_else(|| seed.create_color()),
+			self.background_color.unwrap_or_else(|| seed.create_color()),
+			self.spot_color.unwrap_or_else(|| seed.create_color()),
+		];
 
-		palette.extend_from_slice(&options.color.unwrap_or_else(|| builder.create_color()));
-		palette.extend_from_slice(&options.background_color.unwrap_or_else(|| builder.create_color()));
-		palette.extend_from_slice(&options.spot_color.unwrap_or_else(|| builder.create_color()));
+		let pixels = create_image_data(self.size, || seed.create_fill());
 
-		let image_data = create_image_data(options.size, || builder.create_fill());
-
-		let scale = options.scale;
-		let size = options.size;
-		let row_width = size + size % 2;
-
-		let width = row_width * scale;
-		let height = size * scale;
-
-		let data = rasterize(&image_data, row_width, size, scale, 2);
-		let depth = png::BitDepth::Two;
-
-		Icon {
-			width,
-			height,
-			depth,
-			palette,
-			data,
-		}
+		Image {
+			palette: &palette,
+			pixels: &pixels,
+			width: self.size + self.size % 2,
+			scale: self.scale,
+		}.render(writer)
 	}
 }

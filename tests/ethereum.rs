@@ -1,17 +1,13 @@
-use blockies::{Blockies, create_icon, ethereum};
+use blockies::Ethereum;
 
 fn run_test(expected: &'static [u8], seed: &'static str, size: usize, scale: usize) {
 	let mut memory = Vec::new();
-	let options = ethereum::Options {
-		size,
-		scale,
-		seed,
-		color: None,
-		background_color: None,
-		spot_color: None,
-	};
 
-	create_icon(&mut memory, Blockies::Ethereum(options)).unwrap();
+	let mut blockies = Ethereum::default();
+
+	blockies.size = size;
+	blockies.scale = scale;
+	blockies.create_icon(&mut memory, seed.as_bytes()).unwrap();
 
 	assert_eq!(expected, &memory[..]);
 }
