@@ -1,12 +1,16 @@
 [package]
 name = "blockies"
 version = "0.2.0"
-authors = ["debris <marek.kotewicz@gmail.com>"]
+authors = [
+    "debris <marek.kotewicz@gmail.com>",
+    "Maciej Hirsz <hello@maciej.codes>"
+]
 homepage = "https://github.com/debris/blockies.rs"
 license = "MIT"
 keywords = ["blockies", "identity", "identicon", "png", "blocky"]
 description = "Library that generates blocky identicons."
 edition = "2018"
+readme = "./README.md"
 
 [dependencies]
 hsl = "0.1.1"
