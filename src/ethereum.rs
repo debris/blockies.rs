@@ -4,13 +4,57 @@ use pixelate::{Color, Image, Error};
 
 use crate::util::{create_image_data, hsl_to_rgb};
 
+/// Context struct for creating an Ethereum-style 3-color Blockies.
+///
+/// The best way to create it is by using the default trait:
+///
+/// ```rust
+/// use blockies::Ethereum;
+///
+/// let mut gen = Ethereum::default();
+/// let mut png = Vec::new();
+///
+/// gen.scale = 8;
+/// gen.create_icon(&mut png, b"0x0000000000000000000000000000000000000000");
+///
+/// // `png` contains the PNG image of the blockies.
+/// assert!(png.len() > 0);
+/// ```
 pub struct Ethereum {
+	/// Size of blockies (number of blocks per row in the image), default: 8
 	pub size: usize,
+	/// Pixel size (width and height) of a single block in the image, default: 16
 	pub scale: usize,
+	/// Foreground color of the image, default: None (derived from seed)
 	pub color: Option<Color>,
+	/// Background color of the image, default: None (derived from seed)
 	pub background_color: Option<Color>,
+	/// Spot color of the image, default: None (derived form seed)
 	pub spot_color: Option<Color>,
 }
+
+impl Ethereum {
+	/// Write the PNG image of the blockies for a given `seed` into a writer.
+	pub fn create_icon<W: io::Write>(&self, writer: W, seed: &[u8]) -> Result<(), Error> {
+		let mut seed = Seed::new(seed);
+
+		let palette = vec![
+			self.color.unwrap_or_else(|| seed.create_color()),
+			self.background_color.unwrap_or_else(|| seed.create_color()),
+			self.spot_color.unwrap_or_else(|| seed.create_color()),
+		];
+
+		let pixels = create_image_data(self.size, || seed.create_fill());
+
+		Image {
+			palette: &palette,
+			pixels: &pixels,
+			width: self.size + self.size % 2,
+			scale: self.scale,
+		}.render(writer)
+	}
+}
+
 
 impl Default for Ethereum {
 	fn default() -> Self {
@@ -24,7 +68,7 @@ impl Default for Ethereum {
 	}
 }
 
-pub struct Seed {
+struct Seed {
 	randseed: [i32; 4],
 }
 
@@ -80,26 +124,5 @@ impl Seed {
 			1 => FillType::Color,
 			_ => FillType::SpotColor,
 		}
-	}
-}
-
-impl Ethereum {
-	pub fn create_icon<W: io::Write>(&self, writer: W, seed: &[u8]) -> Result<(), Error> {
-		let mut seed = Seed::new(seed);
-
-		let palette = vec![
-			self.color.unwrap_or_else(|| seed.create_color()),
-			self.background_color.unwrap_or_else(|| seed.create_color()),
-			self.spot_color.unwrap_or_else(|| seed.create_color()),
-		];
-
-		let pixels = create_image_data(self.size, || seed.create_fill());
-
-		Image {
-			palette: &palette,
-			pixels: &pixels,
-			width: self.size + self.size % 2,
-			scale: self.scale,
-		}.render(writer)
 	}
 }
