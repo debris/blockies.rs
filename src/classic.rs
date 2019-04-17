@@ -1,25 +1,73 @@
-use image::{Rgba, RgbaImage};
+use std::io;
 use hsl::HSL;
-use {hsl_to_rgba, fill_rect, rgba};
+use pixelate::{Color, Image, Error};
 
-fn white() -> Rgba<u8> {
-	rgba(255, 255, 255, 255)
-}
+use crate::util::{create_image_data, hsl_to_rgb};
 
-pub struct Options {
-	pub size: u32,
-	pub scale: u32,
-	pub seed: Vec<u8>,
-	pub color: Option<Rgba<u8>>,
-	pub background_color: Option<Rgba<u8>>,
-}
-
+/// Context struct for creating an classic 2-color Blockies.
+///
+/// The best way to create it is by using the default trait:
+///
+/// ```rust
+/// use blockies::Classic;
+///
+/// let mut gen = Classic::default();
+/// let mut png = Vec::new();
+///
+/// gen.scale = 8;
+/// gen.create_icon(&mut png, b"0x0000000000000000000000000000000000000000");
+///
+/// // `png` contains the PNG image of the blockies.
+/// assert!(png.len() > 0);
+/// ```
 pub struct Classic {
-	randseed: f64,
+	/// Size of blockies (number of blocks per row in the image), default: 8
+	pub size: usize,
+	/// Pixel size (width and height) of a single block in the image, default: 16
+	pub scale: usize,
+	/// Foreground color of the image, default: None (derived from seed)
+	pub color: Option<Color>,
+	/// Background color of the image, default: None (white)
+	pub background_color: Option<Color>,
 }
 
 impl Classic {
-	fn seedrand(&mut self, seed: &[u8]) {
+	/// Write the PNG image of the blockies for a given `seed` into a writer.
+	pub fn create_icon<W: io::Write>(&self, writer: W, seed: &[u8]) -> Result<(), Error> {
+		let mut seed = Seed::new(seed);
+
+		let color = self.color.unwrap_or_else(|| seed.create_color());
+		let background_color = self.background_color.unwrap_or_else(|| pixelate::WHITE);
+
+		let palette = vec![background_color, color];
+		let pixels = create_image_data(self.size as usize, || seed.rand() >= 0.5);
+
+		Image {
+			palette: &palette,
+			pixels: &pixels,
+			width: self.size + self.size % 2,
+			scale: self.scale,
+		}.render(writer)
+	}
+}
+
+impl Default for Classic {
+	fn default() -> Self {
+		Classic {
+			size: 8,
+			scale: 16,
+			color: None,
+			background_color: None,
+		}
+	}
+}
+
+pub struct Seed {
+	randseed: f64,
+}
+
+impl Seed {
+	fn new(seed: &[u8]) -> Self {
 		let mut randseed = 0u64;
 
 		for i in 0..seed.len() / 2 {
@@ -31,7 +79,9 @@ impl Classic {
 			randseed = randseed ^ ((seed[seed.len() - 1] as u64) << 8);
 		}
 
-		self.randseed = randseed as f64;
+		Seed {
+			randseed: randseed as f64,
+		}
 	}
 
 	fn rand(&mut self) -> f64 {
@@ -41,64 +91,12 @@ impl Classic {
 		r - r.floor()
 	}
 
-	fn create_color(&mut self) -> Rgba<u8> {
+	fn create_color(&mut self) -> Color {
 		let hsl = HSL {
 			h: (self.rand() * 360.0).floor(),
 			s: (self.rand() * 50.0 + 50.0) / 100.0,
 			l: (self.rand() * 60.0 + 20.0) / 100.0,
 		};
-		hsl_to_rgba(hsl)
-	}
-
-	fn create_image_data(&mut self, size: u32) -> Vec<bool> {
-		let odd = size % 2 == 1;
-		let data_width = size / 2;
-	
-		(0..size)
-			.into_iter()
-			.map(|_| {
-				let row = (0..data_width)
-					.into_iter()
-					.map(|_| self.rand() >= 0.5)
-					.collect::<Vec<bool>>();
-				let mut cloned_row = row.clone();
-				if odd {
-					let last = cloned_row.last().cloned().unwrap_or(false);
-					cloned_row.push(last);
-				}
-				cloned_row.into_iter().chain(row.into_iter().rev()).collect::<Vec<_>>()
-			})
-			.flat_map(|x| x)
-			.collect()
-	}
-
-	pub fn create_icon(options: Options) -> RgbaImage {
-		let mut builder = Classic {
-			randseed: 0.0
-		};
-
-		builder.seedrand(&options.seed);
-
-		let scale = options.scale;
-		let color = options.color.unwrap_or_else(|| builder.create_color());
-		let background_color = options.background_color.unwrap_or_else(|| white());
-
-		let image_data = builder.create_image_data(options.size);
-		let real_size = options.size * scale;
-
-		let mut image = RgbaImage::new(real_size, real_size);
-		fill_rect(&mut image, 0, 0, real_size, background_color);
-
-		for (index, fill) in image_data.into_iter().enumerate() {
-			if fill {
-				let index = index as u32;
-				let row = index / options.size;
-				let col = index % options.size;
-
-				fill_rect(&mut image, col * scale, row * scale, scale, color);
-			}
-		}
-
-		image
+		hsl_to_rgb(hsl)
 	}
 }

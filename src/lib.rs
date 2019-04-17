@@ -1,45 +1,27 @@
-extern crate image;
-extern crate hsl;
+//! # blockies.rs
+//!
+//! library that generates blocky identicons
+//!
+//! Rust implementation of javascript [blockies](https://github.com/download13/blockies) library. Supports also [ethereum blockies](https://github.com/alexvandesande/blockies)
+//!
+//! ### Library usage
+//!
+//! ```rust
+//! use blockies::Ethereum;
+//!
+//! let blockies = Ethereum::default();
+//! let mut png = Vec::new();
+//!
+//! blockies.create_icon(&mut png, b"0x01122df2b7d1c0a6ad94589da045af3885bedbbc");
+//!
+//! // `png` now contains a rendered image of the blockies for that address
+//! assert_eq!(png.len(), 179);
+//! ```
 
-pub mod classic;
-pub mod ethereum;
+mod classic;
+mod ethereum;
+pub(crate) mod util;
 
-use std::io;
-pub use image::ImageError;
-use image::{Rgba, RgbaImage, GenericImage, DynamicImage, ImageFormat};
-use hsl::HSL;
-
-fn hsl_to_rgba(hsl: HSL) -> Rgba<u8> {
-	let (r, g, b) = hsl.to_rgb();
-	Rgba::<u8> {
-		data: [r, g, b, 255],
-	}
-}
-
-fn fill_rect(image: &mut RgbaImage, x: u32, y: u32, size: u32, color: Rgba<u8>) {
-	let mut sub_image = image.sub_image(x, y, size, size);
-	for (_, _ , pixel) in sub_image.pixels_mut() {
-		*pixel = color;
-	}
-}
-
-pub fn rgba(r: u8, g: u8, b: u8, a: u8) -> Rgba<u8> {
-	Rgba::<u8> {
-		data: [r, g, b, a],
-	}
-}
-
-pub enum Blockies {
-	Classic(classic::Options),
-	Ethereum(ethereum::Options),
-}
-
-pub fn create_icon<W>(w: &mut W, blockies: Blockies) -> Result<(), ImageError> where W: io::Write {
-	let image = match blockies {
-		Blockies::Classic(options) => classic::Classic::create_icon(options),
-		Blockies::Ethereum(options) => ethereum::Ethereum::create_icon(options),
-	};
-
-	let dy_image = DynamicImage::ImageRgba8(image);
-	dy_image.save(w, ImageFormat::PNG)
-}
+pub use classic::Classic;
+pub use ethereum::Ethereum;
+pub use pixelate::Error;

@@ -1,23 +1,15 @@
-extern crate blockies;
-extern crate image;
-
-use blockies::{Blockies, create_icon, classic};
+use blockies::Classic;
 
 #[test]
 fn test_classic() {
-	let expected = image::open("./tests/classic_hello_world_10_5.png").expect("expected to find test image");
-	let mut expected_memory = Vec::new();
-	expected.save(&mut expected_memory, image::ImageFormat::PNG).unwrap();
+	let expected = include_bytes!("./classic_hello_world_10_5.png");
 
 	let mut memory = Vec::new();
-	let options = classic::Options {
-		size: 10,
-		scale: 5,
-		seed: "hello world".into(),
-		color: None,
-		background_color: None,
-	};
+	let mut blockies = Classic::default();
 
-	create_icon(&mut memory, Blockies::Classic(options)).unwrap();
-	assert_eq!(expected_memory, memory);
+	blockies.size = 10;
+	blockies.scale = 5;
+	blockies.create_icon(&mut memory, b"hello world").unwrap();
+
+	assert_eq!(&expected[..], &memory[..]);
 }
