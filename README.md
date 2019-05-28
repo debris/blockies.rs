@@ -32,7 +32,7 @@ cargo build --release -p blockies-cli
 ```
 
 ```
-blockies 0.1.0
+blockies 0.1.1
 debris <marek.kotewicz@gmail.com>
 blockies cli
 

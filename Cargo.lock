@@ -32,7 +32,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "blockies"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "hsl 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "pixelate 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -40,9 +40,9 @@ dependencies = [
 
 [[package]]
 name = "blockies-cli"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
- "blockies 0.2.0",
+ "blockies 0.3.0",
  "clap 2.25.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
